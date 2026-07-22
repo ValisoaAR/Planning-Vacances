@@ -353,6 +353,7 @@ function dayDetailHTML(day) {
 }
 
 function openDayDetail(day) {
+  authModal.hidden = true;
   document.getElementById("day-detail-content").innerHTML = dayDetailHTML(day);
   document.getElementById("day-detail-modal").hidden = false;
   highlightDay(day.id);
@@ -432,6 +433,7 @@ authBtn.addEventListener("click", async () => {
     updateAuthButton();
     renderAll();
   } else {
+    closeDayDetail();
     authError.hidden = true;
     authForm.reset();
     authModal.hidden = false;

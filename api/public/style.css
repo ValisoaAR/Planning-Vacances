@@ -34,6 +34,15 @@
 
 * { box-sizing: border-box; }
 
+/* Filet de sécurité global : toute règle d'auteur qui pose "display" sur un
+   sélecteur de classe (ex. .modal-overlay { display:flex }, .editor-grid { display:grid })
+   a la même spécificité que le style natif [hidden] { display:none } du navigateur,
+   et une règle d'auteur gagne toujours une égalité de spécificité contre l'UA stylesheet.
+   Sans ce garde-fou, poser/retirer l'attribut hidden en JS n'a alors aucun effet visuel. */
+[hidden] {
+  display: none !important;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -578,7 +587,9 @@ h1, h2, h3 { font-family: inherit; letter-spacing: -0.01em; }
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  /* Les panes internes de Leaflet (marqueurs, popups) montent jusqu'à z-index 700 ;
+     sans dépasser largement cette valeur, la carte s'affiche par-dessus les modales. */
+  z-index: 1000;
   padding: 16px;
 }
 

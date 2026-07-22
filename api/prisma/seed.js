@@ -1,4 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
+const { recalculatePlaces } = require("../src/lib/routing");
 
 const prisma = new PrismaClient();
 
@@ -102,7 +103,7 @@ async function main() {
   await prisma.day.deleteMany();
   await prisma.home.deleteMany();
 
-  await prisma.home.create({ data: HOME });
+  const home = await prisma.home.create({ data: HOME });
 
   for (const day of DAYS) {
     await prisma.day.create({
@@ -128,6 +129,14 @@ async function main() {
   }
 
   console.log("Seed terminé : domicile + 8 jours + lieux insérés.");
+
+  console.log("Calcul des trajets réels (OSRM) pour chaque lieu...");
+  const places = await prisma.place.findMany();
+  const { updated, errors } = await recalculatePlaces(prisma, home, places);
+  console.log(`Trajets calculés : ${updated}/${places.length}.`);
+  if (errors.length) {
+    console.warn("Échecs de calcul (relançables avec le bouton ↻ dans l'app) :", errors);
+  }
 }
 
 main()
