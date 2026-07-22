@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(node -c \"c:\\\\VSCode\\\\Planning Vacances\\\\app.js\")",
+      "Bash(npm --version)",
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(node -c \"c:\\\\VSCode\\\\Planning Vacances\\\\api\\\\src\\\\routes\\\\places.js\")",
+      "Bash(node -c \"c:\\\\VSCode\\\\Planning Vacances\\\\api\\\\src\\\\routes\\\\home.js\")",
+      "Bash(node -c \"c:\\\\VSCode\\\\Planning Vacances\\\\api\\\\src\\\\routes\\\\recalculate.js\")",
+      "Bash(node -e \"console.log\\(require\\('bcryptjs'\\) ? 'has bcryptjs locally' : ''\\)\")",
+      "Bash(curl -s http://localhost:3000/api/trip)",
+      "Bash(curl -s -o /dev/null -w \"index.html status: %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(node -e ' *)",
+      "Bash(cd \"/c/VSCode/Planning Vacances\" && docker compose down 2>&1 | tail -10 && rm -f .env /tmp/cookies.txt /tmp/assilah_id.txt *)",
+      "Bash(ls -la \"C:\\\\Users\\\\valis\\\\.claude\\\\projects\\\\c--VSCode-Planning-Vacances\\\\memory\\\\\" 2>&1 *)",
+      "Read(//c/Users/valis/.claude/projects/c--VSCode-Planning-Vacances/**)",
+      "Read(//c/Users/valis/.claude/projects/c--VSCode-Planning-Vacances/memory/**)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}

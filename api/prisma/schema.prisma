@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Home {
+  id        Int      @id @default(autoincrement())
+  name      String
+  lat       Float
+  lng       Float
+  updatedAt DateTime @updatedAt
+}
+
+model Day {
+  id     Int     @id @default(autoincrement())
+  num    Int     @unique
+  date   String
+  title  String
+  desc   String
+  places Place[]
+}
+
+model Place {
+  id               Int      @id @default(autoincrement())
+  dayId            Int
+  day              Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  name             String
+  lat              Float
+  lng              Float
+  optional         Boolean  @default(false)
+  isPrimary        Boolean  @default(false)
+  legType          String   @default("ROUND_TRIP") // "ROUND_TRIP" | "ONE_WAY"
+  note             String?
+  distanceKm       Float?
+  durationMin      Float?
+  routeGeometry    Json?
+  isManualOverride Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  updatedAt        DateTime @updatedAt
+}
