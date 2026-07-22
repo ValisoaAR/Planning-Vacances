@@ -414,9 +414,12 @@ h1, h2, h3 { font-family: inherit; letter-spacing: -0.01em; }
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   box-shadow: var(--shadow-md);
+  flex-wrap: wrap;
 }
 
 .totals-icon { font-size: 1.8rem; }
+
+.totals-text { flex: 1; min-width: 160px; }
 
 .totals-label {
   font-size: 0.78rem;
@@ -430,6 +433,21 @@ h1, h2, h3 { font-family: inherit; letter-spacing: -0.01em; }
   font-size: 1.2rem;
   font-weight: 800;
 }
+
+.overview-btn {
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.overview-btn:hover { background: rgba(255, 255, 255, 0.22); }
 
 /* ---------- Éditeur (domicile / lieu) ---------- */
 
@@ -625,77 +643,6 @@ h1, h2, h3 { font-family: inherit; letter-spacing: -0.01em; }
   font-size: 0.82rem;
   margin: -4px 0 10px 0;
 }
-
-/* ---------- Modal détail du programme du jour ---------- */
-
-.detail-box {
-  max-width: 480px;
-  max-height: 85vh;
-  overflow-y: auto;
-  position: relative;
-  padding-top: 30px;
-}
-
-.modal-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  color: var(--muted);
-  font-size: 1.1rem;
-  cursor: pointer;
-  border-radius: 50%;
-}
-
-.modal-close:hover { background: var(--bg); }
-
-.detail-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.detail-place-list {
-  list-style: none;
-  margin: 14px 0 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.detail-place-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-}
-
-.detail-place-row.optional { border-style: dashed; }
-
-.detail-place-order {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--day-color, var(--teal));
-  color: #fff;
-  font-size: 0.76rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 2px;
-}
-
-.detail-place-body { flex: 1; min-width: 0; }
 
 /* ---------- Footer ---------- */
 

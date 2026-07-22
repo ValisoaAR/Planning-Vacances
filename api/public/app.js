@@ -149,10 +149,10 @@ function renderMap() {
     day.places.forEach((place) => {
       drawPlaceLine(home, place, color, day.id);
 
-      // Cliquer sur un pin affiche le programme complet du jour (organisé, avec le tracé mis en avant)
-      // plutôt qu'une simple popup — c'est la même vue que celle ouverte depuis la liste des jours.
+      // Cliquer sur un pin surligne le tracé du jour et met en avant sa carte dans le
+      // panneau latéral — la carte et le détail restent visibles en même temps.
       const marker = L.marker([place.lat, place.lng], { icon: placeIcon(day, place, color) }).addTo(map);
-      marker.on("click", () => openDayDetail(day));
+      marker.on("click", () => selectDay(day));
       mapLayers.push(marker);
 
       boundsPoints.push([place.lat, place.lng]);
@@ -171,16 +171,45 @@ function focusOnDay(day) {
   map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 14 });
 }
 
+/**
+ * Sélectionne un jour depuis un pin de la carte OU depuis la liste : surligne son
+ * tracé, zoome dessus, et met en avant sa carte dans le panneau latéral — le tout
+ * dans le même écran (pas de fenêtre séparée qui masquerait la carte).
+ */
+function selectDay(day) {
+  highlightDay(day.id);
+  focusOnDay(day);
+  expandListIfCollapsed();
+
+  document.querySelectorAll(".day-card").forEach((el) => el.classList.remove("active"));
+  const card = document.querySelector(`.day-card[data-day-id="${day.id}"]`);
+  if (card) {
+    card.classList.add("active");
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+/** Revient à la vue d'ensemble (tous les jours) après avoir zoomé sur un jour précis. */
+function showOverview() {
+  resetHighlight();
+  document.querySelectorAll(".day-card").forEach((el) => el.classList.remove("active"));
+
+  const boundsPoints = [[trip.home.lat, trip.home.lng]];
+  trip.days.forEach((day) => day.places.forEach((p) => boundsPoints.push([p.lat, p.lng])));
+  map.fitBounds(boundsPoints, { padding: [30, 30] });
+}
+
 // ---- Rendu : bandeau total ------------------------------------------------------
 
 function totalsBannerHTML(totals) {
   return `
     <div class="totals-banner">
       <div class="totals-icon">🧭</div>
-      <div>
+      <div class="totals-text">
         <div class="totals-label">Total trajets du programme</div>
         <div class="totals-value">${formatDistance(totals.distanceKm)} · ${formatDuration(totals.durationMin)}</div>
       </div>
+      <button type="button" class="overview-btn" data-action="show-overview">Vue d'ensemble</button>
     </div>`;
 }
 
@@ -320,51 +349,6 @@ function dayBadgeHTML(day) {
   return `<span class="day-badge${pending ? " badge-pending" : ""}">🚗 ${tripInfoText(primary)}</span>`;
 }
 
-// ---- Rendu : vue détail du programme d'un jour (modal, ouverte depuis un pin ou une carte-jour) ----
-
-function placeDetailRowHTML(place, order) {
-  return `
-    <li class="detail-place-row${place.optional ? " optional" : ""}">
-      <span class="detail-place-order">${order}</span>
-      <div class="detail-place-body">${placeInfoBlockHTML(place)}</div>
-      <a class="place-link" href="${gmapsLink(place.lat, place.lng)}" target="_blank" rel="noopener">Google Maps</a>
-    </li>`;
-}
-
-function dayDetailHTML(day) {
-  // --day-color est posée ici, sur le conteneur englobant : .detail-header et
-  // .detail-place-list sont frères, une variable CSS ne descend pas entre frères.
-  return `
-    <div style="--day-color:${dayColor(day.num)}">
-      <div class="detail-header">
-        <div class="day-number">${day.num}</div>
-        <div class="day-heading">
-          <h2 class="day-title">${escapeHtml(day.title)}</h2>
-          <div class="day-date">${escapeHtml(day.date)}</div>
-        </div>
-      </div>
-      ${dayBadgeHTML(day)}
-      <p class="day-desc">${escapeHtml(day.desc)}</p>
-      <ol class="detail-place-list">
-        ${day.places.map((p, i) => placeDetailRowHTML(p, i + 1)).join("")}
-      </ol>
-    </div>
-  `;
-}
-
-function openDayDetail(day) {
-  authModal.hidden = true;
-  document.getElementById("day-detail-content").innerHTML = dayDetailHTML(day);
-  document.getElementById("day-detail-modal").hidden = false;
-  highlightDay(day.id);
-  focusOnDay(day);
-}
-
-function closeDayDetail() {
-  document.getElementById("day-detail-modal").hidden = true;
-  resetHighlight();
-}
-
 function renderDaysList() {
   const listEl = document.getElementById("days-list");
   listEl.innerHTML = "";
@@ -433,7 +417,6 @@ authBtn.addEventListener("click", async () => {
     updateAuthButton();
     renderAll();
   } else {
-    closeDayDetail();
     authError.hidden = true;
     authForm.reset();
     authModal.hidden = false;
@@ -442,12 +425,6 @@ authBtn.addEventListener("click", async () => {
 
 document.getElementById("auth-cancel").addEventListener("click", () => {
   authModal.hidden = true;
-});
-
-const dayDetailModal = document.getElementById("day-detail-modal");
-document.getElementById("detail-close").addEventListener("click", closeDayDetail);
-dayDetailModal.addEventListener("click", (e) => {
-  if (e.target === dayDetailModal) closeDayDetail();
 });
 
 authForm.addEventListener("submit", async (e) => {
@@ -473,9 +450,11 @@ document.getElementById("days-list").addEventListener("click", async (e) => {
   const action = target.dataset.action;
 
   try {
-    if (action === "focus-day") {
+    if (action === "show-overview") {
+      showOverview();
+    } else if (action === "focus-day") {
       const day = trip.days.find((d) => d.id === Number(target.dataset.dayId));
-      if (day) openDayDetail(day);
+      if (day) selectDay(day);
     } else if (action === "edit-place") {
       editingPlaceId = Number(target.dataset.id);
       addingPlaceForDayId = null;
@@ -603,6 +582,14 @@ toggleBtn.addEventListener("click", () => {
   toggleBtn.setAttribute("aria-expanded", String(!isCollapsed));
   setTimeout(() => map.invalidateSize(), 260);
 });
+
+// Si le panneau est réduit, sélectionner un jour (pin ou carte) le rouvre automatiquement.
+function expandListIfCollapsed() {
+  if (!layoutEl.classList.contains("list-collapsed")) return;
+  layoutEl.classList.remove("list-collapsed");
+  toggleBtn.setAttribute("aria-expanded", "true");
+  setTimeout(() => map.invalidateSize(), 260);
+}
 
 // ---- Démarrage -----------------------------------------------------------------
 
