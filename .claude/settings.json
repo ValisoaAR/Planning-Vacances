@@ -16,7 +16,11 @@
       "Bash(cd \"/c/VSCode/Planning Vacances\" && docker compose down 2>&1 | tail -10 && rm -f .env /tmp/cookies.txt /tmp/assilah_id.txt *)",
       "Bash(ls -la \"C:\\\\Users\\\\valis\\\\.claude\\\\projects\\\\c--VSCode-Planning-Vacances\\\\memory\\\\\" 2>&1 *)",
       "Read(//c/Users/valis/.claude/projects/c--VSCode-Planning-Vacances/**)",
-      "Read(//c/Users/valis/.claude/projects/c--VSCode-Planning-Vacances/memory/**)"
+      "Read(//c/Users/valis/.claude/projects/c--VSCode-Planning-Vacances/memory/**)",
+      "Bash(curl -s -o /dev/null -w \"Status via tunnel: %{http_code}\\\\n\" https://much-relocation-best-percent.trycloudflare.com/)",
+      "Bash(curl -s https://much-relocation-best-percent.trycloudflare.com/api/trip)",
+      "Bash(docker volume *)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(48\\).toString\\('hex'\\)\\)\")"
     ],
     "additionalDirectories": [
       "\\tmp"

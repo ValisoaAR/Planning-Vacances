@@ -1,84 +1,168 @@
 # Itinéraire Nord du Maroc — 8 jours en famille
 
-App interactive (backend Node/Express + PostgreSQL, frontend Leaflet.js) présentant l'itinéraire du 29/07 au 05/08, avec domicile modifiable, calcul automatique des trajets (routage réel via OSRM) et édition manuelle des lieux/distances.
+App interactive (carte + planning éditable) pour le trip du 29/07 au 05/08. Elle tourne sur un serveur Google Cloud (gratuit via le crédit d'essai) et est exposée en ligne via un tunnel Cloudflare.
 
-## Architecture
+**Repo GitHub :** https://github.com/ValisoaAR/Planning-Vacances
 
-- `api/` — backend Express + Prisma + PostgreSQL, sert aussi le frontend statique (`api/public/`)
-- `docker-compose.yml` — deux services : `api` (app) et `db` (Postgres), pour un usage local
-- `render.yaml` — blueprint pour déployer en ligne sur Render en quelques clics
-- Calcul de trajet : [serveur public OSRM](https://project-osrm.org/) (gratuit, sans clé API)
+---
 
-## Mettre l'app en ligne (Render — recommandé)
+## Partie 1 — Déploiement complet sur Google Cloud (à faire une fois)
 
-Render fait tourner le conteneur `api` (Dockerfile) + une base Postgres managée, avec un plan gratuit suffisant pour ce projet.
+### 1.1 Compte Google Cloud
+Déjà fait si tu as suivi jusqu'ici : compte créé sur [cloud.google.com/free](https://cloud.google.com/free), crédit d'essai de 300$/90 jours actif. Ce projet ne consommera que quelques dollars sur 2 semaines — largement dans les clous, aucune facturation réelle tant que tu n'actives pas explicitement un compte payant après l'essai.
 
-1. Pousser ce dossier sur un repo GitHub (public ou privé, peu importe).
-2. Générer le hash bcrypt du PIN familial (choisis un code, ex. `1234`) — le plus simple est de le faire une fois en local avec Docker :
-   ```bash
-   docker build -t hash-tool ./api
-   docker run --rm hash-tool node -e "console.log(require('bcryptjs').hashSync('TON_PIN', 10))"
-   ```
-   Garde le résultat de côté (une chaîne du type `$2a$10$...`).
-3. Sur [dashboard.render.com](https://dashboard.render.com), **New → Blueprint**, sélectionner le repo GitHub. Render détecte `render.yaml` à la racine et propose de créer :
-   - le service web `itineraire-maroc` (build à partir de `api/Dockerfile`)
-   - la base `itineraire-maroc-db` (Postgres), reliée automatiquement via `DATABASE_URL`
-   - un `JWT_SECRET` généré automatiquement
-4. Render va demander la valeur de `FAMILY_PIN_HASH` (marquée `sync: false` dans le blueprint, donc à saisir à la main) : coller le hash généré à l'étape 2.
-5. Lancer le déploiement. Une fois le service "Live", ouvrir une **Shell** sur le service (onglet *Shell* dans le dashboard Render) et peupler la base une seule fois :
-   ```bash
-   npx prisma db seed
-   ```
-6. L'app est accessible à l'URL fournie par Render (`https://itineraire-maroc-xxxx.onrender.com`).
+### 1.2 Créer la machine (VM)
 
-Le plan gratuit Render met le service en veille après une période d'inactivité (premier chargement plus lent après une pause) — largement suffisant pour un usage familial ; passer à un plan payant si besoin d'une dispo permanente.
+Dans la console Google Cloud → **Compute Engine → VM instances → Create instance** :
 
-### Alternatives
+| Champ | Valeur |
+|---|---|
+| Nom | `itineraire-maroc` |
+| Région | `europe-west1` (Belgique) ou `europe-west9` (Paris) |
+| Type de machine | `e2-small` (2 Go RAM) |
+| Image du disque de démarrage | **Ubuntu 22.04 LTS** |
+| Pare-feu | pas besoin de cocher HTTP/HTTPS (le tunnel Cloudflare fait sortir la connexion, pas besoin d'ouvrir de port entrant) |
 
-- **Railway** ([railway.app](https://railway.app)) : `railway init`, ajouter un plugin Postgres, puis `railway up` — Railway lit directement le `Dockerfile` dans `api/`. Mêmes variables d'env à définir (`DATABASE_URL` auto-injectée par le plugin Postgres, `JWT_SECRET`, `FAMILY_PIN_HASH`).
-- **Fly.io** ([fly.io](https://fly.io)) : `fly launch` depuis `api/` (détecte le Dockerfile), `fly postgres create` pour la base, `fly secrets set JWT_SECRET=... FAMILY_PIN_HASH=...`.
-- **VPS** : `docker compose up -d` directement dessus (voir section suivante), derrière un reverse proxy (Caddy/nginx) pour le HTTPS.
+Cliquer **Create**. Attendre que le statut passe à vert (quelques dizaines de secondes).
 
-## Démarrage en local (Docker)
+### 1.3 Se connecter en SSH
 
-1. Copier `.env.example` en `.env` et remplir les valeurs :
-   ```bash
-   cp .env.example .env
-   ```
-2. Générer le hash du PIN familial (choisis un code, ex. `1234`) :
-   ```bash
-   node -e "console.log(require('bcryptjs').hashSync('TON_PIN', 10))"
-   ```
-   (nécessite `npm install bcryptjs` en local, ou lance-le une fois dans le conteneur après le premier `up` : `docker compose exec api node -e "console.log(require('bcryptjs').hashSync('TON_PIN',10))"`)
+Sur la ligne de la VM créée, cliquer le bouton **SSH** → ça ouvre un terminal directement dans le navigateur (aucune clé à gérer).
 
-   Colle le résultat dans `FAMILY_PIN_HASH` du `.env`. Choisis aussi un `JWT_SECRET` long et aléatoire.
+### 1.4 Installer Docker sur la VM
 
-   ⚠️ **Piège docker-compose** : un hash bcrypt contient des `$` (ex. `$2a$10$...`). Docker Compose interprète `$X` comme une variable dans les fichiers `.env` et va **corrompre le hash en silence** si les `$` ne sont pas doublés. Écris-le comme `FAMILY_PIN_HASH=$$2a$$10$$...` dans `.env` (uniquement dans ce fichier — ne pas doubler les `$` ailleurs, par exemple si tu passes la valeur directement en variable d'env sur Render).
-3. Lancer les conteneurs :
-   ```bash
-   docker compose up -d --build
-   ```
-4. Peupler la base avec l'itinéraire initial (**une seule fois**, à la première installation) :
-   ```bash
-   docker compose exec api npx prisma db seed
-   ```
-5. Ouvrir [http://localhost:3000](http://localhost:3000).
-
-Le bouton **🔒 Édition** en haut à droite permet de se connecter avec le PIN pour changer le domicile, éditer les lieux, forcer un recalcul de trajet ou passer une distance/durée en saisie manuelle. Sans connexion, le site reste consultable en lecture seule.
-
-## Développement sans Docker
+Coller ces commandes une par une dans le terminal SSH ouvert :
 
 ```bash
-cd api
-npm install
-# DATABASE_URL doit pointer vers un Postgres local ou distant
-npx prisma db push
-npx prisma db seed
-npm run dev
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg git
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
+
+Vérifier que ça marche :
+```bash
+sudo docker run hello-world
+```
+
+### 1.5 Récupérer le projet
+
+```bash
+git clone https://github.com/ValisoaAR/Planning-Vacances.git
+cd Planning-Vacances
+```
+
+### 1.6 Configurer les secrets (`.env`)
+
+```bash
+cp .env.example .env
+```
+
+Générer un mot de passe Postgres et une clé JWT aléatoires :
+```bash
+openssl rand -hex 16   # à coller dans POSTGRES_PASSWORD
+openssl rand -hex 32   # à coller dans JWT_SECRET
+```
+
+Générer le hash du PIN familial (remplace `TON_PIN` par le code choisi, ex. `051408`) :
+```bash
+sudo docker compose run --rm api node -e "console.log(require('bcryptjs').hashSync('TON_PIN', 10))"
+```
+Ça affiche une chaîne du type `$2a$10$abc123...`.
+
+Éditer le fichier avec un éditeur simple :
+```bash
+nano .env
+```
+Remplir les 4 lignes :
+```
+POSTGRES_USER=maroc
+POSTGRES_PASSWORD=<le hash openssl généré>
+POSTGRES_DB=itineraire_maroc
+JWT_SECRET=<la clé openssl générée>
+FAMILY_PIN_HASH=<le hash bcrypt généré, EN DOUBLANT CHAQUE $>
+```
+
+⚠️ **Piège important** : le hash bcrypt contient des `$` (ex. `$2a$10$abc...`). Docker Compose interprète `$X` comme une variable et **corrompt le hash en silence** si les `$` ne sont pas doublés. Écris-le comme `FAMILY_PIN_HASH=$$2a$$10$$abc...` — uniquement dans ce fichier `.env`. Sauvegarder avec `Ctrl+O`, `Entrée`, puis quitter avec `Ctrl+X`.
+
+### 1.7 Lancer l'application
+
+```bash
+sudo docker compose up -d --build
+```
+
+Peupler la base avec l'itinéraire de départ (**une seule fois**) :
+```bash
+sudo docker compose exec api npx prisma db seed
+```
+
+### 1.8 Récupérer le lien public à partager
+
+```bash
+sudo docker compose logs tunnel | grep trycloudflare
+```
+
+Ça affiche une ligne du type :
+```
+https://xxxx-yyyy-zzzz.trycloudflare.com
+```
+→ **C'est ce lien qu'il faut envoyer à la famille** (WhatsApp, etc.).
+
+---
+
+## Partie 2 — Utilisation au quotidien (une fois tout installé)
+
+Toutes ces commandes se lancent depuis le terminal SSH de la VM, dans le dossier `Planning-Vacances`.
+
+### Voir si le site tourne / redémarrer après un arrêt
+```bash
+sudo docker compose up -d
+```
+
+### Retrouver le lien public
+```bash
+sudo docker compose logs tunnel | grep trycloudflare
+```
+Le lien reste stable tant que le conteneur `tunnel` ne redémarre pas.
+
+### Arrêter le site (rien n'est perdu)
+```bash
+sudo docker compose down
+```
+
+### Se connecter en mode édition sur le site
+Bouton **🔒 Édition** en haut à droite du site → le PIN choisi à l'étape 1.6.
+
+### Changer le PIN familial
+```bash
+sudo docker compose run --rm api node -e "console.log(require('bcryptjs').hashSync('NOUVEAU_PIN', 10))"
+nano .env   # remplacer FAMILY_PIN_HASH (en doublant les $, voir 1.6)
+sudo docker compose up -d
+```
+
+---
+
+## Partie 3 — Développement local (sur ton PC, avant de pousser sur GitHub)
+
+Pour tester une modification avant de la déployer sur la VM :
+
+```bash
+docker compose up -d --build
+docker compose exec api npx prisma db seed   # seulement au premier lancement local
+```
+Ouvrir [http://localhost:3000](http://localhost:3000). Une fois satisfait, `git push` puis sur la VM : `git pull && sudo docker compose up -d --build`.
+
+---
 
 ## Notes techniques
 
-- Le calcul de trajet interroge le serveur **public** OSRM (`router.project-osrm.org`) : gratuit et sans clé, mais non garanti à 100 % en continu. Un lieu passé en "override manuel" n'est jamais recalculé automatiquement ; le bouton ↻ force un recalcul ponctuel.
-- Le schéma de base est synchronisé avec `prisma db push` (pas de migrations versionnées) — adapté à ce projet perso ; passer à `prisma migrate` si un historique de migrations devient utile.
-- Image `api` basée sur `node:20-alpine` : le paquet `openssl` est installé explicitement dans le Dockerfile — sans lui, le moteur Prisma plante silencieusement en boucle sur Alpine (erreur `Could not parse schema engine response`).
+- Calcul de trajet : serveur public [OSRM](https://project-osrm.org/), gratuit et sans clé, mais non garanti à 100 % en continu. Un lieu en "override manuel" n'est jamais recalculé automatiquement (bouton ↻ pour forcer).
+- Schéma de base synchronisé avec `prisma db push` (pas de migrations versionnées) — suffisant pour ce projet perso.
+- Le Dockerfile installe explicitement `openssl` (image Alpine) : sans ça, Prisma plante en boucle au démarrage (`Could not parse schema engine response`).
+- Architecture : `api/` = backend Express + Prisma + PostgreSQL, sert aussi le frontend statique (`api/public/`). `docker-compose.yml` = 3 services (`api`, `db`, `tunnel`).
+- Le tunnel Cloudflare "quick" (`tunnel --url ...`) ne nécessite ni compte ni carte, mais son URL change à chaque redémarrage du conteneur `tunnel` — pas grave sur une VM qui reste allumée en continu.
+- `render.yaml` est présent dans le repo comme piste alternative si un jour tu changes d'hébergeur, mais n'est plus le chemin recommandé (voir historique : Render a de vraies plaintes clients sur sa facturation).

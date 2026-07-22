@@ -29,5 +29,15 @@ services:
     ports:
       - "3000:3000"
 
+  # Expose l'app sur une vraie URL HTTPS publique sans carte bancaire ni port forwarding,
+  # via un tunnel Cloudflare "quick tunnel" (aucun compte Cloudflare requis). Voir le README
+  # pour comment récupérer l'URL générée, et pour l'option "tunnel nommé" (URL stable).
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --url http://api:3000
+    depends_on:
+      - api
+
 volumes:
   db_data:
